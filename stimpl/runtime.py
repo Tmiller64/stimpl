@@ -66,7 +66,11 @@ def evaluate(expression, state):
       return (*value, state)
 
     case Sequence(exprs = exprs) | Program(exprs = exprs):
-      pass
+      new_state = state
+      for expr in exprs:
+        result_value, result_type, new_state = evaluate(expr, new_state)
+      return(result_value, result_type, new_state)
+
 
     case Assign(variable=variable, value=value):
 
@@ -109,7 +113,7 @@ def evaluate(expression, state):
             Cannot subtract {left_type} to {right_type}""")
       
       match left_type:
-        case Integer() | String() | FloatingPoint():
+        case Integer() | FloatingPoint():
           result = left_result - right_result
         case _:
           raise InterpTypeError(f"""Cannot subtract {left_type}s""")
@@ -126,7 +130,7 @@ def evaluate(expression, state):
             Cannot multiply {left_type} to {right_type}""")
       
       match left_type:
-        case Integer() | String() | FloatingPoint():
+        case Integer() | FloatingPoint():
           result = left_result * right_result
         case _:
           raise InterpTypeError(f"""Cannot multiply {left_type}s""")
@@ -143,8 +147,10 @@ def evaluate(expression, state):
             Cannot divide {left_type} to {right_type}""")
       
       match left_type:
-        case Integer() | String() | FloatingPoint():
+        case FloatingPoint():
           result = left_result / right_result
+        case Integer():
+          result = left_result // right_result
         case _:
           raise InterpTypeError(f"""Cannot divide {left_type}s""")
 
@@ -183,7 +189,7 @@ def evaluate(expression, state):
     case Not(expr=expr):
       expr_value, expr_type, new_state = evaluate(expr, state)
 
-      match expr:
+      match expr_type:
         case Boolean():
           result = not(expr_value)
         case _:
@@ -193,15 +199,18 @@ def evaluate(expression, state):
 
     case If(condition=condition, true=true, false=false):
       cond_value, cond_type, new_state = evaluate(condition, state)
-      true_value, true_type, new_state = evaluate(true, state)
-      false_value, false_type, new_state = evaluate(false, state)
+      true_value, true_type, new_state = evaluate(true, new_state)
+      false_value, false_type, new_state = evaluate(false, new_state)
+      
       match cond_type:
         case Boolean():
           if cond_value == 1:
             result = true_value
+            result_type = true_type
           else:
             result = false_value
-      return(result, cond_type, new_state)
+            result_type = false_type
+      return(result, result_type, new_state)
 
     case Lt(left=left, right=right):
       left_value, left_type, new_state = evaluate(left, state)
@@ -236,7 +245,7 @@ def evaluate(expression, state):
         case Integer() | Boolean() | String() | FloatingPoint():
           result = left_value <= right_value
         case Unit():
-          result = False
+          result = True
         case _:
           raise InterpTypeError(f"Cannot perform <= on {left_type} type.")
 
@@ -275,7 +284,7 @@ def evaluate(expression, state):
         case Integer() | Boolean() | String() | FloatingPoint():
           result = left_value >= right_value
         case Unit():
-          result = False
+          result = True
         case _:
           raise InterpTypeError(f"Cannot perform >= on {left_type} type.")
 
@@ -295,7 +304,7 @@ def evaluate(expression, state):
         case Integer() | Boolean() | String() | FloatingPoint():
           result = left_value == right_value
         case Unit():
-          result = False
+          result = True
         case _:
           raise InterpTypeError(f"Cannot perform == on {left_type} type.")
 
@@ -322,16 +331,20 @@ def evaluate(expression, state):
       return (result, Boolean(), new_state)
 
     case While(condition=condition, body=body):
-      cond_value, cond_type, new_state = evaluate(condition, state)
-      body_value, body_type, new_state = evaluate(body, state)
-      match cond_type:
+      result_value, result_type, new_state = evaluate(condition, state)
+
+      match result_type:
         case Boolean():
-          while (cond_value != 1):
-           body_value
+          while result_value:
+           result_value, result_type, new_state = evaluate(body, new_state)
+           result_value, result_type, new_state = evaluate(condition, new_state)
         case _:
-          raise  InterpTypeError(f"Cannot perform while loop on {cond_type} type.") 
-      return(body_value)
+          raise  InterpTypeError(f"Cannot perform while loop on {result_type} type.") 
+      return(False, Boolean(), new_state)
+    
+    
     case _:
+      print(expression)
       raise InterpSyntaxError("Unhandled!")
 pass
 
