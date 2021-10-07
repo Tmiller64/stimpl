@@ -66,7 +66,9 @@ def evaluate(expression, state):
       return (*value, state)
 
     case Sequence(exprs = exprs) | Program(exprs = exprs):
+      #Declare initial state
       new_state = state
+      #loop throught list of expressions
       for expr in exprs:
         result_value, result_type, new_state = evaluate(expr, new_state)
       return(result_value, result_type, new_state)
@@ -96,6 +98,7 @@ def evaluate(expression, state):
             Cannot add {left_type} to {right_type}""")
       
       match left_type:
+        ## only instance where strings can be used in an arethmetic function
         case Integer() | String() | FloatingPoint():
           result = left_result + right_result
         case _:
@@ -149,6 +152,7 @@ def evaluate(expression, state):
       match left_type:
         case FloatingPoint():
           result = left_result / right_result
+          ## double slashes signify integer division
         case Integer():
           result = left_result // right_result
         case _:
@@ -204,6 +208,7 @@ def evaluate(expression, state):
       
       match cond_type:
         case Boolean():
+          ## 1 also signify true for booleans
           if cond_value == 1:
             result = true_value
             result_type = true_type
@@ -244,6 +249,7 @@ def evaluate(expression, state):
       match left_type:
         case Integer() | Boolean() | String() | FloatingPoint():
           result = left_value <= right_value
+          ## need to make true because two ren units are equivelent
         case Unit():
           result = True
         case _:
@@ -283,6 +289,7 @@ def evaluate(expression, state):
       match left_type:
         case Integer() | Boolean() | String() | FloatingPoint():
           result = left_value >= right_value
+        ## need to make true because two ren units are equivelent
         case Unit():
           result = True
         case _:
@@ -303,6 +310,7 @@ def evaluate(expression, state):
       match left_type:
         case Integer() | Boolean() | String() | FloatingPoint():
           result = left_value == right_value
+         ## need to make true because two ren units are equivelent
         case Unit():
           result = True
         case _:
@@ -331,10 +339,12 @@ def evaluate(expression, state):
       return (result, Boolean(), new_state)
 
     case While(condition=condition, body=body):
+      #declare initial condition
       result_value, result_type, new_state = evaluate(condition, state)
 
       match result_type:
         case Boolean():
+          #evaluate body then loop until condition met
           while result_value:
            result_value, result_type, new_state = evaluate(body, new_state)
            result_value, result_type, new_state = evaluate(condition, new_state)
